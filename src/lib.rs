@@ -1,3 +1,4 @@
+pub mod backtrace;
 pub mod driver;
 pub mod error;
 pub mod session;
@@ -224,6 +225,48 @@ impl LldbMcpServer {
         params: Parameters<tools::StepParams>,
     ) -> Result<Json<tools::StopInfo>, String> {
         tools::handle_finish_frame(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "print_variable",
+        description = "Print the value of a variable in scope for the current or specified stack frame"
+    )]
+    pub async fn print_variable(
+        &self,
+        params: Parameters<tools::PrintVariableParams>,
+    ) -> Result<Json<tools::VariableInfo>, String> {
+        tools::handle_print_variable(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "print_frame_info",
+        description = "Print information about the current or specified stack frame"
+    )]
+    pub async fn print_frame_info(
+        &self,
+        params: Parameters<tools::PrintFrameInfoParams>,
+    ) -> Result<Json<backtrace::FrameInfo>, String> {
+        tools::handle_print_frame_info(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "print_backtrace",
+        description = "Print the call backtrace, optionally filtering out stdlib and external runtime frames"
+    )]
+    pub async fn print_backtrace(
+        &self,
+        params: Parameters<tools::PrintBacktraceParams>,
+    ) -> Result<Json<Vec<backtrace::FrameInfo>>, String> {
+        tools::handle_print_backtrace(&self.store, params.0)
             .await
             .map(Json)
             .map_err(|e| e.to_string())

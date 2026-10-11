@@ -68,7 +68,9 @@ pub async fn handle_set_breakpoint(
         .ok_or_else(|| LldbMcpError::SessionNotFound(params.session_id.clone()))?;
 
     let cmd = match &params.location {
-        BreakpointLocation::File { path, line } => format!("breakpoint set -f \"{path}\" -l {line}"),
+        BreakpointLocation::File { path, line } => {
+            format!("breakpoint set -f \"{path}\" -l {line}")
+        }
         BreakpointLocation::Function { name } => format!("breakpoint set -n \"{name}\""),
         BreakpointLocation::Address { addr } => format!("breakpoint set -a \"{addr}\""),
     };
@@ -80,8 +82,9 @@ pub async fn handle_set_breakpoint(
         return Err(LldbMcpError::Breakpoint(err));
     }
 
-    let id = parse_breakpoint_id(&output)
-        .ok_or_else(|| LldbMcpError::Breakpoint(format!("Failed to determine breakpoint ID: {output}")))?;
+    let id = parse_breakpoint_id(&output).ok_or_else(|| {
+        LldbMcpError::Breakpoint(format!("Failed to determine breakpoint ID: {output}"))
+    })?;
 
     // If condition was specified, apply it
     if let Some(ref cond) = params.condition {
@@ -153,7 +156,10 @@ pub async fn handle_delete_breakpoint(
         return Err(LldbMcpError::Breakpoint(err));
     }
 
-    Ok(format!("Breakpoint {} deleted successfully", params.breakpoint_id))
+    Ok(format!(
+        "Breakpoint {} deleted successfully",
+        params.breakpoint_id
+    ))
 }
 
 pub async fn handle_set_breakpoint_condition(

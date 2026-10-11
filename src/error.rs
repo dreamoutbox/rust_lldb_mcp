@@ -30,4 +30,10 @@ pub enum LldbMcpError {
 
     #[error("Thread error: {0}")]
     Thread(String),
+
+    #[error("Variable inspection error: {0}")]
+    Variable(String),
+
+    #[error("Frame inspection error: {0}")]
+    Frame(String),
 }

@@ -1,4 +1,5 @@
 pub mod breakpoints;
+pub mod print;
 pub mod program;
 pub mod session;
 pub mod stepping;
@@ -7,6 +8,10 @@ pub use breakpoints::{
     BreakpointInfo, BreakpointLocation, DeleteBreakpointParams, ListBreakpointsParams,
     SetBreakpointConditionParams, SetBreakpointParams, handle_delete_breakpoint,
     handle_list_breakpoints, handle_set_breakpoint, handle_set_breakpoint_condition,
+};
+pub use print::{
+    PrintBacktraceParams, PrintFrameInfoParams, PrintVariableParams, VariableInfo,
+    handle_print_backtrace, handle_print_frame_info, handle_print_variable,
 };
 pub use program::{
     KillProcessParams, LoadProgramParams, ProcessInfo, RunProgramParams, handle_kill_process,

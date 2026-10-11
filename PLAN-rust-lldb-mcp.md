@@ -166,20 +166,20 @@ src/
 
 ---
 
-### Phase 7: Print Tools [STATUS: TODO]
+### Phase 7: Print Tools [STATUS: DONE]
 
 - **Goal**: Inspect variables, frames, and filtered backtraces.
 - **Tasks**:
-  - [ ] `src/tools/print.rs`:
+  - [x] `src/tools/print.rs`:
     - `print_variable(session_id, name: String, thread_id: Option<u64>, frame_index: Option<u32>) -> VariableInfo` — runs `frame variable <name>`
     - `print_frame_info(session_id, thread_id: Option<u64>, frame_index: Option<u32>) -> FrameInfo` — runs `frame info`
     - `print_backtrace(session_id, thread_id: Option<u64>) -> Vec<FrameInfo>` — runs `thread backtrace`
-  - [ ] `src/backtrace.rs`: user-code frame filter
+  - [x] `src/backtrace.rs`: user-code frame filter
     - Drop frames where file path contains:
       - `.rustup/toolchains`, `/rustc/` (stdlib)
       - Configurable denylist (default: `tokio`, `tokio_util`, `hyper`, `tower`, `futures`, `async_std`, `smol`, `mio`, `tracing`)
     - Failsafe: if all frames are filtered, return the full list
-  - [ ] `VariableInfo`: name, type, value string
+  - [x] `VariableInfo`: name, type, value string
 - **Done when**: `print_backtrace` on `testprog` returns only user frames; tests pass.
 
 ---
