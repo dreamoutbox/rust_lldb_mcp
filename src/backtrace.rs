@@ -194,7 +194,8 @@ mod tests {
 
     #[test]
     fn test_parse_frame_line() {
-        let line = "  * frame #0: 0x0000555555572bbe testprog`testprog::factorial(n=6) at main.rs:24:8";
+        let line =
+            "  * frame #0: 0x0000555555572bbe testprog`testprog::factorial(n=6) at main.rs:24:8";
         let frame = parse_frame_line(line).expect("parse frame");
         assert_eq!(frame.index, 0);
         assert_eq!(frame.address, "0x0000555555572bbe");

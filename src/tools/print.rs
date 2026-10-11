@@ -215,8 +215,12 @@ pub fn parse_variable_output(output: &str, requested_name: &str) -> VariableInfo
 mod tests {
     use super::*;
     use crate::session::create_session;
-    use crate::tools::breakpoints::{BreakpointLocation, SetBreakpointParams, handle_set_breakpoint};
-    use crate::tools::program::{LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program};
+    use crate::tools::breakpoints::{
+        BreakpointLocation, SetBreakpointParams, handle_set_breakpoint,
+    };
+    use crate::tools::program::{
+        LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program,
+    };
 
     #[test]
     fn test_parse_variable_output() {
@@ -318,6 +322,9 @@ mod tests {
         .await
         .expect("filtered backtrace");
         assert!(!bt.is_empty());
-        assert!(bt.iter().all(|f| !f.function.contains("std::") && !f.function.contains("core::")));
+        assert!(
+            bt.iter()
+                .all(|f| !f.function.contains("std::") && !f.function.contains("core::"))
+        );
     }
 }

@@ -174,8 +174,12 @@ pub fn parse_thread_line(line: &str) -> Option<ThreadInfo> {
 mod tests {
     use super::*;
     use crate::session::create_session;
-    use crate::tools::breakpoints::{BreakpointLocation, SetBreakpointParams, handle_set_breakpoint};
-    use crate::tools::program::{LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program};
+    use crate::tools::breakpoints::{
+        BreakpointLocation, SetBreakpointParams, handle_set_breakpoint,
+    };
+    use crate::tools::program::{
+        LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program,
+    };
 
     #[test]
     fn test_parse_thread_line() {
@@ -187,7 +191,8 @@ mod tests {
         assert_eq!(info.name, Some("testprog".to_string()));
         assert_eq!(info.stop_reason, Some("breakpoint 1.1".to_string()));
 
-        let unselected = "  thread #1: tid = 84670, 0x00007ffff7d255ec libc.so.6`__mmap + 44, name = 'testprog'";
+        let unselected =
+            "  thread #1: tid = 84670, 0x00007ffff7d255ec libc.so.6`__mmap + 44, name = 'testprog'";
         let info1 = parse_thread_line(unselected).expect("parse thread 1");
         assert_eq!(info1.id, 1);
         assert_eq!(info1.tid, Some(84670));

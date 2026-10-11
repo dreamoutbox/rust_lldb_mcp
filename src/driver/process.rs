@@ -60,7 +60,8 @@ impl LldbProcess {
 
         // LLDB interactive loop defaults to async mode (True). Force synchronous mode
         // so that process launch, continue, and step commands block until stop events occur.
-        proc.send_command("script lldb.debugger.SetAsync(False)").await?;
+        proc.send_command("script lldb.debugger.SetAsync(False)")
+            .await?;
 
         Ok(proc)
     }

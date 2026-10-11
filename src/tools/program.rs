@@ -191,6 +191,8 @@ mod tests {
         )
         .await
         .expect("kill process");
-        assert!(kill_res.contains("Process") || kill_res.contains("killed") || !kill_res.is_empty());
+        assert!(
+            kill_res.contains("Process") || kill_res.contains("killed") || !kill_res.is_empty()
+        );
     }
 }

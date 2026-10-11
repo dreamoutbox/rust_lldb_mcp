@@ -112,8 +112,12 @@ pub fn parse_eval_output(output: &str) -> EvalResult {
 mod tests {
     use super::*;
     use crate::session::create_session;
-    use crate::tools::breakpoints::{BreakpointLocation, SetBreakpointParams, handle_set_breakpoint};
-    use crate::tools::program::{LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program};
+    use crate::tools::breakpoints::{
+        BreakpointLocation, SetBreakpointParams, handle_set_breakpoint,
+    };
+    use crate::tools::program::{
+        LoadProgramParams, RunProgramParams, handle_load_program, handle_run_program,
+    };
 
     #[test]
     fn test_parse_eval_output() {

@@ -46,5 +46,8 @@ pub async fn handle_session_delete(
 ) -> Result<String, LldbMcpError> {
     let session_id = crate::session::parse_session_id(&params.session_id)?;
     delete_session(store, &session_id).await?;
-    Ok(format!("Session {} deleted successfully", params.session_id))
+    Ok(format!(
+        "Session {} deleted successfully",
+        params.session_id
+    ))
 }

@@ -83,7 +83,13 @@ pub fn parse_breakpoint_list(output: &str) -> Vec<ParsedBreakpoint> {
                 breakpoints.push(b);
             }
 
-            let desc = line.split(':').skip(1).collect::<Vec<_>>().join(":").trim().to_string();
+            let desc = line
+                .split(':')
+                .skip(1)
+                .collect::<Vec<_>>()
+                .join(":")
+                .trim()
+                .to_string();
             current = Some(ParsedBreakpoint {
                 id,
                 description: desc,

@@ -180,9 +180,9 @@ async fn test_full_debug_workflow_end_to_end() {
 
 #[tokio::test]
 async fn test_logging_enabled_writes_session_log() {
+    use rust_lldb_mcp::SessionLogger;
     use std::path::PathBuf;
     use tokio::fs::{read_to_string, remove_dir_all};
-    use rust_lldb_mcp::SessionLogger;
 
     let log_dir = PathBuf::from("target/test_session_logs");
     let _ = remove_dir_all(&log_dir).await;
@@ -269,7 +269,9 @@ async fn test_logging_enabled_writes_session_log() {
 
     // Assert log file exists and contains all tool logs
     let log_file = log_dir.join(format!("{session_id}.log"));
-    let log_contents = read_to_string(&log_file).await.expect("read session log file");
+    let log_contents = read_to_string(&log_file)
+        .await
+        .expect("read session log file");
 
     assert!(log_contents.contains("[print_variable] name: a | type: int | value: 6"));
     assert!(log_contents.contains("[print_frame_info] frame #0:"));

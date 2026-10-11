@@ -1,6 +1,6 @@
-use std::{collections::HashMap, sync::Arc, time::SystemTime};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc, time::SystemTime};
 use tokio::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
 
@@ -76,7 +76,8 @@ impl SessionStore {
 
 /// Parses a string into a SessionId.
 pub fn parse_session_id(id_str: &str) -> Result<SessionId, crate::error::LldbMcpError> {
-    let uuid = Uuid::parse_str(id_str)
-        .map_err(|_| crate::error::LldbMcpError::InvalidArgument(format!("Invalid UUID: {id_str}")))?;
+    let uuid = Uuid::parse_str(id_str).map_err(|_| {
+        crate::error::LldbMcpError::InvalidArgument(format!("Invalid UUID: {id_str}"))
+    })?;
     Ok(SessionId(uuid))
 }
