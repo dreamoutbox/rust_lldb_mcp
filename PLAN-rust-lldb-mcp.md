@@ -88,18 +88,18 @@ src/
 
 ---
 
-### Phase 2: LLDB CLI Driver [STATUS: TODO]
+### Phase 2: LLDB CLI Driver [STATUS: DONE]
 
 - **Goal**: Reliable async read/write layer over a `rust-lldb` CLI child process.
 - **Tasks**:
-  - [ ] `src/driver/process.rs`:
+  - [x] `src/driver/process.rs`:
     - `LldbProcess`: wraps `tokio::process::Child`, `BufReader<ChildStdout>`, `ChildStdin`
     - Spawn: `Command::new("rust-lldb").args(["--no-use-colors", "--source-quietly"]).stdin(Piped).stdout(Piped).stderr(Piped)`
-    - Initialize: send `settings set prompt "__LLDB_PROMPT__ "` and `settings set auto-confirm true`
-    - `send_command(&mut self, cmd: &str) -> Result<String, LldbMcpError>`: writes command line, reads output until `__LLDB_PROMPT__ ` sentinel
+    - Initialize: send `settings set auto-confirm true`
+    - `send_command(&mut self, cmd: &str) -> Result<String, LldbMcpError>`: writes command line, reads output until `DONE_SENTINEL` marker
     - Timeout protection: abort after configurable duration if child stalls
-  - [ ] `src/driver/parser.rs`: helper functions for common LLDB output parsing
-  - [ ] Unit tests: spawn `rust-lldb`, send `version`, verify version output captured cleanly
+  - [x] `src/driver/parser.rs`: helper functions for common LLDB output parsing
+  - [x] Unit tests: spawn `rust-lldb`, send `version`, verify version output captured cleanly
 - **Done when**: driver can launch `rust-lldb`, send commands, receive cleaned output text; tests pass.
 
 ---
