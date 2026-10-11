@@ -13,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting rust_lldb_mcp server on stdio");
 
-    let server = LldbMcpServer;
+    let server = LldbMcpServer::new();
     let service = serve_server(server, stdio()).await?;
     service.waiting().await?;
 

@@ -1,7 +1,4 @@
-use std::{
-    process::Stdio,
-    time::Duration,
-};
+use std::{process::Stdio, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, ChildStdin, ChildStdout, Command},

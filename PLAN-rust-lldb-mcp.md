@@ -104,18 +104,18 @@ src/
 
 ---
 
-### Phase 3: Session Management [STATUS: TODO]
+### Phase 3: Session Management [STATUS: DONE]
 
 - **Goal**: LLM can create, list, and delete LLDB debug sessions.
 - **Tasks**:
-  - [ ] `src/session/store.rs`: define `SessionId` (newtype over `Uuid`), `DebugSession` (holds `LldbProcess`, session name, creation timestamp, loaded target), `SessionStore` (`HashMap<SessionId, DebugSession>` behind `Arc<Mutex<...>>`)
-  - [ ] `src/session/manager.rs`: `create_session` (spawns LLDB child), `list_sessions`, `delete_session` (sends `quit` to child, awaits exit)
-  - [ ] `src/tools/session.rs`: expose three MCP tools:
+  - [x] `src/session/store.rs`: define `SessionId` (newtype over `Uuid`), `DebugSession` (holds `LldbProcess`, session name, creation timestamp, loaded target), `SessionStore` (`HashMap<SessionId, DebugSession>` behind `Arc<Mutex<...>>`)
+  - [x] `src/session/manager.rs`: `create_session` (spawns LLDB child), `list_sessions`, `delete_session` (sends `quit` to child, awaits exit)
+  - [x] `src/tools/session.rs`: expose three MCP tools:
     - `session_create(name: String) -> SessionId`
     - `session_list() -> Vec<SessionInfo>`
     - `session_delete(session_id: SessionId) -> ()`
-  - [ ] Register tools in `src/tools/mod.rs`
-  - [ ] Unit tests for `SessionStore` CRUD
+  - [x] Register tools in `src/tools/mod.rs`
+  - [x] Unit tests for `SessionStore` CRUD
 - **Done when**: `session_create` returns a valid UUID; `session_delete` sends `quit` and reaps the child; tests pass.
 
 ---
