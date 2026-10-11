@@ -59,8 +59,12 @@ impl SessionLogger {
     /// Logs `print_variable` result.
     pub async fn log_variable(&self, session_id: &str, var: &VariableInfo) {
         let type_str = var.var_type.as_deref().unwrap_or("unknown");
-        let details = format!("name: {} | type: {} | value: {}", var.name, type_str, var.value);
-        self.append_entry(session_id, "print_variable", &details).await;
+        let details = format!(
+            "name: {} | type: {} | value: {}",
+            var.name, type_str, var.value
+        );
+        self.append_entry(session_id, "print_variable", &details)
+            .await;
     }
 
     /// Logs `print_frame_info` result.
@@ -74,7 +78,8 @@ impl SessionLogger {
             "frame #{}: 0x{} {}{loc}",
             frame.index, frame.address, frame.function
         );
-        self.append_entry(session_id, "print_frame_info", &details).await;
+        self.append_entry(session_id, "print_frame_info", &details)
+            .await;
     }
 
     /// Logs `print_backtrace` result.
@@ -86,9 +91,14 @@ impl SessionLogger {
                 (Some(file), None) => format!(" at {file}"),
                 _ => String::new(),
             };
-            let _ = write!(details, "\n  #{} 0x{} {}{loc}", f.index, f.address, f.function);
+            let _ = write!(
+                details,
+                "\n  #{} 0x{} {}{loc}",
+                f.index, f.address, f.function
+            );
         }
-        self.append_entry(session_id, "print_backtrace", &details).await;
+        self.append_entry(session_id, "print_backtrace", &details)
+            .await;
     }
 
     /// Logs `evaluate_expression` result.
@@ -100,7 +110,8 @@ impl SessionLogger {
             let v = eval.value.as_deref().unwrap_or("<empty>");
             format!("expr: {expr:?} | type: {t} | value: {v}")
         };
-        self.append_entry(session_id, "evaluate_expression", &details).await;
+        self.append_entry(session_id, "evaluate_expression", &details)
+            .await;
     }
 }
 

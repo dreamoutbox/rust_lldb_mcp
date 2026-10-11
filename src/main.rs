@@ -15,30 +15,35 @@ fn parse_cli_args() -> CliArgs {
 
     let mut i = 1;
     while i < args.len() {
-        match args[i].as_str() {
-            "--log-values" => {
+        let arg = args[i].trim();
+        if arg == "--log-values" {
+            log_values = true;
+        } else if arg == "--log-dir" {
+            if i + 1 < args.len() {
+                i += 1;
+                let path_str = args[i].trim().trim_matches('"').trim_matches('\'');
+                log_dir = Some(PathBuf::from(path_str));
                 log_values = true;
             }
-            "--log-dir" => {
-                if i + 1 < args.len() {
-                    i += 1;
-                    log_dir = Some(PathBuf::from(&args[i]));
-                    log_values = true;
-                }
-            }
-            "-h" | "--help" => {
-                eprintln!(
-                    "rust_lldb_mcp - LLDB Model Context Protocol server\n\n\
-                    USAGE:\n    \
-                    rust_lldb_mcp [OPTIONS]\n\n\
-                    OPTIONS:\n    \
-                    --log-values         Enable logging inspection results to rust_lldb_mcp_logs/<session_id>.log\n    \
-                    --log-dir <PATH>     Specify custom directory for session logs (implies --log-values)\n    \
-                    -h, --help           Print help information"
-                );
-                std::process::exit(0);
-            }
-            _ => {}
+        } else if let Some(rest) = arg.strip_prefix("--log-dir=") {
+            let path_str = rest.trim().trim_matches('"').trim_matches('\'');
+            log_dir = Some(PathBuf::from(path_str));
+            log_values = true;
+        } else if let Some(rest) = arg.strip_prefix("--log-dir ") {
+            let path_str = rest.trim().trim_matches('"').trim_matches('\'');
+            log_dir = Some(PathBuf::from(path_str));
+            log_values = true;
+        } else if arg == "-h" || arg == "--help" {
+            eprintln!(
+                "rust_lldb_mcp - LLDB Model Context Protocol server\n\n\
+                USAGE:\n    \
+                rust_lldb_mcp [OPTIONS]\n\n\
+                OPTIONS:\n    \
+                --log-values         Enable logging inspection results to rust_lldb_mcp_logs/<session_id>.log\n    \
+                --log-dir <PATH>     Specify custom directory for session logs (implies --log-values)\n    \
+                -h, --help           Print help information"
+            );
+            std::process::exit(0);
         }
         i += 1;
     }
