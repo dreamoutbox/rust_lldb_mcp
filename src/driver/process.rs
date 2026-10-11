@@ -94,18 +94,21 @@ impl LldbProcess {
     /// Reads stdout chunks until a standalone DONE_SENTINEL line is observed.
     async fn read_until_sentinel(&mut self, duration: Duration) -> Result<String, LldbMcpError> {
         let read_future = async {
-            let mut accumulator: Vec<u8> = Vec::with_capacity(4096);
+            // stdout_buf: searched for the sentinel; determines when we're done.
+            // stderr_buf: collected separately and appended to the result so
+            //             error-detection callers can see LLDB error lines that
+            //             LLDB may route to stderr.
+            let mut stdout_buf: Vec<u8> = Vec::with_capacity(4096);
+            let mut stderr_buf: Vec<u8> = Vec::new();
             let mut stdout_buffer = [0u8; 1024];
             let mut stderr_buffer = [0u8; 1024];
 
             loop {
                 tokio::select! {
-                    biased;
-
                     res = self.stderr.read(&mut stderr_buffer) => {
                         let bytes_read = res?;
                         if bytes_read > 0 {
-                            accumulator.extend_from_slice(&stderr_buffer[..bytes_read]);
+                            stderr_buf.extend_from_slice(&stderr_buffer[..bytes_read]);
                         }
                     }
 
@@ -115,10 +118,13 @@ impl LldbProcess {
                             // Child process closed stdout (e.g. exited)
                             break;
                         }
-                        accumulator.extend_from_slice(&stdout_buffer[..bytes_read]);
+                        stdout_buf.extend_from_slice(&stdout_buffer[..bytes_read]);
 
-                        // Check if any completed line matches the sentinel
-                        let text = String::from_utf8_lossy(&accumulator);
+                        // Only look for the sentinel on stdout — this was the
+                        // root cause of the CI timeout: with biased selection,
+                        // a noisy stderr (warnings after step_next) would
+                        // starve the stdout arm and the sentinel was never seen.
+                        let text = String::from_utf8_lossy(&stdout_buf);
                         if text.lines().any(|l| l.trim() == DONE_SENTINEL) {
                             break;
                         }
@@ -126,7 +132,11 @@ impl LldbProcess {
                 }
             }
 
-            Ok::<String, LldbMcpError>(String::from_utf8_lossy(&accumulator).into_owned())
+            // Merge stderr before stdout so error lines appear first and
+            // is_error_output() / extract_error_message() can detect them.
+            let mut combined = stderr_buf;
+            combined.extend_from_slice(&stdout_buf);
+            Ok::<String, LldbMcpError>(String::from_utf8_lossy(&combined).into_owned())
         };
 
         timeout(duration, read_future)
