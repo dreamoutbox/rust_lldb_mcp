@@ -86,15 +86,15 @@ src/
 
 ---
 
-### Phase 1: Project Scaffold [STATUS: TODO]
+### Phase 1: Project Scaffold [STATUS: DONE]
 
 - **Goal**: Compiling binary with rmcp wired up on stdio; no tools yet.
 - **Tasks**:
-  - [ ] `cargo new --bin rust_lldb_mcp` (Rust 2024 edition in `Cargo.toml`)
-  - [ ] Add dependencies: `rmcp` (features: `server`, `macros`, `transport-io`), `tokio` (features: `full`), `tracing`, `tracing-subscriber`, `serde`, `serde_json`, `schemars`, `thiserror`, `anyhow`, `uuid` (v4)
-  - [ ] No `lldb` / `lldb-sys` crates; only `rust-lldb` as an external binary on PATH
-  - [ ] Create `src/error.rs` with `LldbMcpError` (`thiserror`)
-  - [ ] Stub `main.rs`: initialise `tracing_subscriber`, parse `--transport` flag (stdio/sse), start empty rmcp server
+  - [x] `cargo new --bin rust_lldb_mcp` (Rust 2024 edition in `Cargo.toml`)
+  - [x] Add dependencies: `rmcp` (features: `server`, `macros`, `transport-io`), `tokio` (features: `full`), `tracing`, `tracing-subscriber`, `serde`, `serde_json`, `schemars`, `thiserror`, `anyhow`, `uuid` (v4)
+  - [x] No `lldb` / `lldb-sys` crates; only `rust-lldb` as an external binary on PATH
+  - [x] Create `src/error.rs` with `LldbMcpError` (`thiserror`)
+  - [x] Stub `main.rs`: initialise `tracing_subscriber`, parse `--transport` flag (stdio/sse), start empty rmcp server
 - **Done when**: `cargo build` is green; `cargo nextest run --test-threads 1 --fail-fast` passes.
 
 ---
