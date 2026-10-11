@@ -271,6 +271,20 @@ impl LldbMcpServer {
             .map(Json)
             .map_err(|e| e.to_string())
     }
+
+    #[tool(
+        name = "evaluate_expression",
+        description = "Evaluate an arbitrary expression in the current or specified stack frame"
+    )]
+    pub async fn evaluate_expression(
+        &self,
+        params: Parameters<tools::EvaluateExpressionParams>,
+    ) -> Result<Json<tools::EvalResult>, String> {
+        tools::handle_evaluate_expression(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]

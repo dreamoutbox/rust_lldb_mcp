@@ -1,7 +1,7 @@
 use std::{process::Stdio, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    process::{Child, ChildStdin, ChildStdout, Command},
+    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command},
     time::timeout,
 };
 
@@ -15,6 +15,7 @@ pub struct LldbProcess {
     child: Child,
     stdin: ChildStdin,
     stdout: ChildStdout,
+    stderr: ChildStderr,
 }
 
 impl LldbProcess {
@@ -45,11 +46,16 @@ impl LldbProcess {
             .stdout
             .take()
             .ok_or_else(|| LldbMcpError::Lldb("Failed to open child stdout".to_string()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| LldbMcpError::Lldb("Failed to open child stderr".to_string()))?;
 
         let mut proc = Self {
             child,
             stdin,
             stdout,
+            stderr,
         };
 
         // LLDB interactive loop defaults to async mode (True). Force synchronous mode
@@ -88,20 +94,34 @@ impl LldbProcess {
     async fn read_until_sentinel(&mut self, duration: Duration) -> Result<String, LldbMcpError> {
         let read_future = async {
             let mut accumulator: Vec<u8> = Vec::with_capacity(4096);
-            let mut buffer = [0u8; 1024];
+            let mut stdout_buffer = [0u8; 1024];
+            let mut stderr_buffer = [0u8; 1024];
 
             loop {
-                let bytes_read = self.stdout.read(&mut buffer).await?;
-                if bytes_read == 0 {
-                    // Child process closed stdout (e.g. exited)
-                    break;
-                }
-                accumulator.extend_from_slice(&buffer[..bytes_read]);
+                tokio::select! {
+                    biased;
 
-                // Check if any completed line matches the sentinel
-                let text = String::from_utf8_lossy(&accumulator);
-                if text.lines().any(|l| l.trim() == DONE_SENTINEL) {
-                    break;
+                    res = self.stderr.read(&mut stderr_buffer) => {
+                        let bytes_read = res?;
+                        if bytes_read > 0 {
+                            accumulator.extend_from_slice(&stderr_buffer[..bytes_read]);
+                        }
+                    }
+
+                    res = self.stdout.read(&mut stdout_buffer) => {
+                        let bytes_read = res?;
+                        if bytes_read == 0 {
+                            // Child process closed stdout (e.g. exited)
+                            break;
+                        }
+                        accumulator.extend_from_slice(&stdout_buffer[..bytes_read]);
+
+                        // Check if any completed line matches the sentinel
+                        let text = String::from_utf8_lossy(&accumulator);
+                        if text.lines().any(|l| l.trim() == DONE_SENTINEL) {
+                            break;
+                        }
+                    }
                 }
             }
 

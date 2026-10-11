@@ -184,16 +184,16 @@ src/
 
 ---
 
-### Phase 8: Expression Evaluation [STATUS: TODO]
+### Phase 8: Expression Evaluation [STATUS: DONE]
 
 - **Goal**: Evaluate arbitrary expressions in the current frame.
 - **Tasks**:
-  - [ ] `src/tools/eval.rs`:
+  - [x] `src/tools/eval.rs`:
     - `evaluate_expression(session_id, expression: String, thread_id: Option<u64>, frame_index: Option<u32>) -> EvalResult`
     - Runs `expr -- <expression>`
     - Captures output value and error if evaluation fails
-  - [ ] `EvalResult`: `{ value: String, error: Option<String> }`
-  - [ ] Unit test: stop at breakpoint, evaluate an arithmetic expression and local variable
+  - [x] `EvalResult`: `{ value: String, error: Option<String> }`
+  - [x] Unit test: stop at breakpoint, evaluate an arithmetic expression and local variable
 - **Done when**: errors surfaced in `EvalResult`, not panics; tests pass.
 
 ---

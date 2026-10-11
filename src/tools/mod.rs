@@ -1,8 +1,13 @@
 pub mod breakpoints;
+pub mod eval;
 pub mod print;
 pub mod program;
 pub mod session;
 pub mod stepping;
+
+pub use eval::{
+    EvalResult, EvaluateExpressionParams, handle_evaluate_expression, parse_eval_output,
+};
 
 pub use breakpoints::{
     BreakpointInfo, BreakpointLocation, DeleteBreakpointParams, ListBreakpointsParams,
