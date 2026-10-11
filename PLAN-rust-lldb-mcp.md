@@ -211,16 +211,16 @@ src/
 
 ---
 
-### Phase 10: Integration & Polish [STATUS: TODO]
+### Phase 10: Integration & Polish [STATUS: DONE]
 
 - **Goal**: End-to-end smoke test, README, clippy clean.
 - **Tasks**:
-  - [ ] `tests/integration_test.rs`: spawn the MCP server binary over stdio, send JSON-RPC `tools/list`, assert all tools present; run mini session (create -> load -> run -> breakpoint -> backtrace -> delete)
-  - [ ] `README.md`: prerequisites (`rust-lldb` on PATH), build + run instructions, example MCP client config, list of all tools
-  - [ ] Consistent error propagation: non-existent `session_id` -> structured MCP error, not panic
-  - [ ] Audit `unwrap`/`expect` outside tests; replace with `?` or add justification comments
-  - [ ] `cargo clippy -- -D warnings` clean
-  - [ ] `cargo nextest run --test-threads 1 --fail-fast` full suite green
+  - [x] `tests/integration_test.rs`: spawn the MCP server binary over stdio, send JSON-RPC `tools/list`, assert all tools present; run mini session (create -> load -> run -> breakpoint -> backtrace -> delete)
+  - [x] `README.md`: prerequisites (`rust-lldb` on PATH), build + run instructions, example MCP client config, list of all tools
+  - [x] Consistent error propagation: non-existent `session_id` -> structured MCP error, not panic
+  - [x] Audit `unwrap`/`expect` outside tests; replace with `?` or add justification comments
+  - [x] `cargo clippy -- -D warnings` clean
+  - [x] `cargo nextest run --test-threads 1 --fail-fast` full suite green
 - **Done when**: integration test passes; clippy clean; README covers all tools.
 
 ---

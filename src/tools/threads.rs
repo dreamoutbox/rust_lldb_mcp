@@ -79,7 +79,13 @@ pub async fn handle_switch_thread(
         return Err(LldbMcpError::Thread(err));
     }
 
-    Ok(output)
+    let msg = if output.is_empty() {
+        format!("Switched to thread {}", params.thread_id)
+    } else {
+        output
+    };
+
+    Ok(msg)
 }
 
 pub async fn handle_run_lldb_command(
