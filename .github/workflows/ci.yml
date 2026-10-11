@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.8
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: Install system dependencies
+        run: ./scripts/install-deps.sh
+
+      - name: Build test fixture
+        run: cargo build --manifest-path testprog/Cargo.toml
+
+      - name: Run tests
+        run: cargo nextest run --test-threads 1 --fail-fast

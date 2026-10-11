@@ -43,15 +43,13 @@ The server executable will be located at `target/release/rust_lldb_mcp`.
 
 ## MCP Client Configuration
 
-Add `rust_lldb_mcp` to your MCP client configuration (e.g. Claude Desktop, Antigravity IDE, Cursor).
-
-### Example: Claude Desktop (`claude_desktop_config.json`)
+Add `rust_lldb_mcp` to your MCP client configuration (e.g. Claude Desktop, Antigravity, Cursor).
 
 ```json
 {
   "mcpServers": {
-    "rust_lldb": {
-      "command": "/path/to/rust_lldb_mcp/target/release/rust_lldb_mcp",
+    "rust_lldb_mcp": {
+      "command": "/path/to/rust_lldb_mcp",
       "args": [
         "--log-values",
         "--log-dir",

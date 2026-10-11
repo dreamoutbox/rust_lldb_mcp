@@ -3,3 +3,4 @@ target/
 *.log
 testlogs/
 rust_lldb_mcp_logs/
+dist/
