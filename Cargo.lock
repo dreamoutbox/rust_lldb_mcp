@@ -539,6 +539,7 @@ name = "rust_lldb_mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "rmcp",
  "schemars",
  "serde",

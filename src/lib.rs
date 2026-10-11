@@ -2,7 +2,12 @@ pub mod backtrace;
 pub mod driver;
 pub mod error;
 pub mod session;
+pub mod session_logger;
 pub mod tools;
+
+use std::sync::Arc;
+
+pub use session_logger::SessionLogger;
 
 use rmcp::{
     handler::server::wrapper::{Json, Parameters},
@@ -21,13 +26,20 @@ use crate::{
 #[derive(Clone, Default)]
 pub struct LldbMcpServer {
     pub store: SessionStore,
+    pub logger: Option<Arc<SessionLogger>>,
 }
 
 impl LldbMcpServer {
     pub fn new() -> Self {
         Self {
             store: SessionStore::new(),
+            logger: None,
         }
+    }
+
+    pub fn with_logger(mut self, logger: SessionLogger) -> Self {
+        self.logger = Some(Arc::new(logger));
+        self
     }
 }
 
@@ -238,10 +250,16 @@ impl LldbMcpServer {
         &self,
         params: Parameters<tools::PrintVariableParams>,
     ) -> Result<Json<tools::VariableInfo>, String> {
-        tools::handle_print_variable(&self.store, params.0)
+        let session_id = params.0.session_id.clone();
+        let res = tools::handle_print_variable(&self.store, params.0)
             .await
-            .map(Json)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+
+        if let Some(logger) = &self.logger {
+            logger.log_variable(&session_id, &res).await;
+        }
+
+        Ok(Json(res))
     }
 
     #[tool(
@@ -252,10 +270,16 @@ impl LldbMcpServer {
         &self,
         params: Parameters<tools::PrintFrameInfoParams>,
     ) -> Result<Json<backtrace::FrameInfo>, String> {
-        tools::handle_print_frame_info(&self.store, params.0)
+        let session_id = params.0.session_id.clone();
+        let res = tools::handle_print_frame_info(&self.store, params.0)
             .await
-            .map(Json)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+
+        if let Some(logger) = &self.logger {
+            logger.log_frame_info(&session_id, &res).await;
+        }
+
+        Ok(Json(res))
     }
 
     #[tool(
@@ -266,10 +290,16 @@ impl LldbMcpServer {
         &self,
         params: Parameters<tools::PrintBacktraceParams>,
     ) -> Result<Json<Vec<backtrace::FrameInfo>>, String> {
-        tools::handle_print_backtrace(&self.store, params.0)
+        let session_id = params.0.session_id.clone();
+        let res = tools::handle_print_backtrace(&self.store, params.0)
             .await
-            .map(Json)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+
+        if let Some(logger) = &self.logger {
+            logger.log_backtrace(&session_id, &res).await;
+        }
+
+        Ok(Json(res))
     }
 
     #[tool(
@@ -280,10 +310,17 @@ impl LldbMcpServer {
         &self,
         params: Parameters<tools::EvaluateExpressionParams>,
     ) -> Result<Json<tools::EvalResult>, String> {
-        tools::handle_evaluate_expression(&self.store, params.0)
+        let session_id = params.0.session_id.clone();
+        let expr = params.0.expression.clone();
+        let res = tools::handle_evaluate_expression(&self.store, params.0)
             .await
-            .map(Json)
-            .map_err(|e| e.to_string())
+            .map_err(|e| e.to_string())?;
+
+        if let Some(logger) = &self.logger {
+            logger.log_eval(&session_id, &expr, &res).await;
+        }
+
+        Ok(Json(res))
     }
 
     #[tool(

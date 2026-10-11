@@ -180,6 +180,7 @@ src/
       - Configurable denylist (default: `tokio`, `tokio_util`, `hyper`, `tower`, `futures`, `async_std`, `smol`, `mio`, `tracing`)
     - Failsafe: if all frames are filtered, return the full list
   - [x] `VariableInfo`: name, type, value string
+  - [x] `SessionLogger`: logs values of `print_variable`, `print_frame_info`, `print_backtrace`, and `evaluate_expression` to `rust_lldb_mcp_logs/<session_id>.log` when `--log-values` CLI arg is passed
 - **Done when**: `print_backtrace` on `testprog` returns only user frames; tests pass.
 
 ---

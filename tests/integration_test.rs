@@ -177,3 +177,111 @@ async fn test_full_debug_workflow_end_to_end() {
         .await;
     assert!(del_err.is_err());
 }
+
+#[tokio::test]
+async fn test_logging_enabled_writes_session_log() {
+    use std::path::PathBuf;
+    use tokio::fs::{read_to_string, remove_dir_all};
+    use rust_lldb_mcp::SessionLogger;
+
+    let log_dir = PathBuf::from("target/test_session_logs");
+    let _ = remove_dir_all(&log_dir).await;
+
+    let server = LldbMcpServer::new().with_logger(SessionLogger::new(&log_dir));
+
+    let create_res = server
+        .session_create(Parameters(SessionCreateParams {
+            name: "log_test_session".to_string(),
+        }))
+        .await
+        .expect("session_create");
+    let session_id = create_res.0.session_id;
+
+    server
+        .load_program(Parameters(LoadProgramParams {
+            session_id: session_id.clone(),
+            executable_path: "testprog/target/debug/testprog".to_string(),
+            args: None,
+            working_dir: None,
+            env: None,
+        }))
+        .await
+        .expect("load_program");
+
+    server
+        .set_breakpoint(Parameters(SetBreakpointParams {
+            session_id: session_id.clone(),
+            location: BreakpointLocation::Function {
+                name: "add".to_string(),
+            },
+            condition: None,
+        }))
+        .await
+        .expect("set_breakpoint");
+
+    server
+        .run_program(Parameters(RunProgramParams {
+            session_id: session_id.clone(),
+            stop_at_entry: None,
+        }))
+        .await
+        .expect("run_program");
+
+    // Phase 7 print tools
+    server
+        .print_variable(Parameters(PrintVariableParams {
+            session_id: session_id.clone(),
+            name: "a".to_string(),
+            thread_id: None,
+            frame_index: None,
+        }))
+        .await
+        .expect("print_variable");
+
+    server
+        .print_frame_info(Parameters(PrintFrameInfoParams {
+            session_id: session_id.clone(),
+            thread_id: None,
+            frame_index: None,
+        }))
+        .await
+        .expect("print_frame_info");
+
+    server
+        .print_backtrace(Parameters(PrintBacktraceParams {
+            session_id: session_id.clone(),
+            thread_id: None,
+            filter_external: Some(true),
+        }))
+        .await
+        .expect("print_backtrace");
+
+    // Phase 8 eval tool
+    server
+        .evaluate_expression(Parameters(EvaluateExpressionParams {
+            session_id: session_id.clone(),
+            expression: "a + b".to_string(),
+            thread_id: None,
+            frame_index: None,
+        }))
+        .await
+        .expect("evaluate_expression");
+
+    // Assert log file exists and contains all tool logs
+    let log_file = log_dir.join(format!("{session_id}.log"));
+    let log_contents = read_to_string(&log_file).await.expect("read session log file");
+
+    assert!(log_contents.contains("[print_variable] name: a | type: int | value: 6"));
+    assert!(log_contents.contains("[print_frame_info] frame #0:"));
+    assert!(log_contents.contains("[print_backtrace]"));
+    assert!(log_contents.contains("[evaluate_expression] expr: \"a + b\" | type: int | value: 13"));
+
+    server
+        .session_delete(Parameters(SessionDeleteParams {
+            session_id: session_id.clone(),
+        }))
+        .await
+        .expect("session_delete");
+
+    let _ = remove_dir_all(&log_dir).await;
+}

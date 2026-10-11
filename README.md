@@ -52,11 +52,17 @@ Add `rust_lldb_mcp` to your MCP client configuration (e.g. Claude Desktop, Antig
   "mcpServers": {
     "rust_lldb": {
       "command": "/path/to/rust_lldb_mcp/target/release/rust_lldb_mcp",
-      "args": []
+      "args": ["--log-values"]
     }
   }
 }
 ```
+
+### CLI Feature Flags
+
+- **`--log-values`**: Enables inspection logging for Phase 7 print tools (`print_variable`, `print_frame_info`, `print_backtrace`) and Phase 8 expression evaluation (`evaluate_expression`). Logs are saved to `rust_lldb_mcp_logs/<session_id>.log` with ISO timestamps, tool names, and inspected values/errors.
+- **`--log-dir <PATH>`**: Specifies a custom directory for session log files (defaults to `rust_lldb_mcp_logs`). Passing `--log-dir` automatically implies `--log-values`.
+- **`-h, --help`**: Displays CLI help and usage information.
 
 ---
 
