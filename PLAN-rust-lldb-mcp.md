@@ -134,19 +134,19 @@ src/
 
 ---
 
-### Phase 5: Breakpoint Tools [STATUS: TODO]
+### Phase 5: Breakpoint Tools [STATUS: DONE]
 
 - **Goal**: Set, list, delete breakpoints; support conditions.
 - **Tasks**:
-  - [ ] `src/tools/breakpoints.rs`:
+  - [x] `src/tools/breakpoints.rs`:
     - `set_breakpoint(session_id, location: BreakpointLocation) -> BreakpointInfo`
       - `BreakpointLocation` enum: `File { path: String, line: u32 }` | `Function { name: String }` | `Address { addr: String }`
       - Maps to: `breakpoint set -f <file> -l <line>` | `breakpoint set -n <name>` | `breakpoint set -a <addr>`
     - `list_breakpoints(session_id) -> Vec<BreakpointInfo>` — runs `breakpoint list` and parses table
     - `delete_breakpoint(session_id, breakpoint_id: u32) -> ()` — runs `breakpoint delete <id>`
     - `set_breakpoint_condition(session_id, breakpoint_id: u32, condition: String) -> ()` — runs `breakpoint modify -c "<condition>" <id>`
-  - [ ] `BreakpointInfo`: id, location, hit count, enabled, condition
-  - [ ] Tests use `testprog` binary
+  - [x] `BreakpointInfo`: id, location, hit count, enabled, condition
+  - [x] Tests use `testprog` binary
 - **Done when**: breakpoints survive a launch/stop cycle; condition respected; tests pass.
 
 ---

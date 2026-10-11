@@ -101,6 +101,60 @@ impl LldbMcpServer {
             .await
             .map_err(|e| e.to_string())
     }
+
+    #[tool(
+        name = "set_breakpoint",
+        description = "Set a breakpoint by file/line, function name, or address"
+    )]
+    pub async fn set_breakpoint(
+        &self,
+        params: Parameters<tools::SetBreakpointParams>,
+    ) -> Result<Json<tools::BreakpointInfo>, String> {
+        tools::handle_set_breakpoint(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "list_breakpoints",
+        description = "List all breakpoints in the session"
+    )]
+    pub async fn list_breakpoints(
+        &self,
+        params: Parameters<tools::ListBreakpointsParams>,
+    ) -> Result<Json<Vec<tools::BreakpointInfo>>, String> {
+        tools::handle_list_breakpoints(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "delete_breakpoint",
+        description = "Delete a breakpoint by its numerical ID"
+    )]
+    pub async fn delete_breakpoint(
+        &self,
+        params: Parameters<tools::DeleteBreakpointParams>,
+    ) -> Result<String, String> {
+        tools::handle_delete_breakpoint(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "set_breakpoint_condition",
+        description = "Set or update an evaluation condition on a breakpoint"
+    )]
+    pub async fn set_breakpoint_condition(
+        &self,
+        params: Parameters<tools::SetBreakpointConditionParams>,
+    ) -> Result<String, String> {
+        tools::handle_set_breakpoint_condition(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]
