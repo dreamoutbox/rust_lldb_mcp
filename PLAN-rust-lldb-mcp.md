@@ -198,15 +198,15 @@ src/
 
 ---
 
-### Phase 9: Thread Tools + Raw Command [STATUS: TODO]
+### Phase 9: Thread Tools + Raw Command [STATUS: DONE]
 
 - **Goal**: Thread enumeration, thread switching, and raw LLDB command escape hatch.
 - **Tasks**:
-  - [ ] `src/tools/threads.rs`:
+  - [x] `src/tools/threads.rs`:
     - `list_threads(session_id) -> Vec<ThreadInfo>` — runs `thread list`
     - `switch_thread(session_id, thread_id: u64) -> ()` — runs `thread select <id>`
     - `run_lldb_command(session_id, command: String) -> String` — sends raw command string as-is to child stdin, captures raw output
-  - [ ] `run_lldb_command` output is unstructured text
+  - [x] `run_lldb_command` output is unstructured text
 - **Done when**: `list_threads` returns threads from `testprog`; `run_lldb_command("version")` returns LLDB version; tests pass.
 
 ---

@@ -4,6 +4,12 @@ pub mod print;
 pub mod program;
 pub mod session;
 pub mod stepping;
+pub mod threads;
+
+pub use threads::{
+    ListThreadsParams, RunLldbCommandParams, SwitchThreadParams, ThreadInfo,
+    handle_list_threads, handle_run_lldb_command, handle_switch_thread, parse_thread_list,
+};
 
 pub use eval::{
     EvalResult, EvaluateExpressionParams, handle_evaluate_expression, parse_eval_output,

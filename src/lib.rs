@@ -285,6 +285,46 @@ impl LldbMcpServer {
             .map(Json)
             .map_err(|e| e.to_string())
     }
+
+    #[tool(
+        name = "list_threads",
+        description = "List all threads currently active in the debugged process"
+    )]
+    pub async fn list_threads(
+        &self,
+        params: Parameters<tools::ListThreadsParams>,
+    ) -> Result<Json<Vec<tools::ThreadInfo>>, String> {
+        tools::handle_list_threads(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "switch_thread",
+        description = "Switch current focus to a specified thread by its thread ID"
+    )]
+    pub async fn switch_thread(
+        &self,
+        params: Parameters<tools::SwitchThreadParams>,
+    ) -> Result<String, String> {
+        tools::handle_switch_thread(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "run_lldb_command",
+        description = "Execute an arbitrary raw LLDB CLI command directly and return its textual output"
+    )]
+    pub async fn run_lldb_command(
+        &self,
+        params: Parameters<tools::RunLldbCommandParams>,
+    ) -> Result<String, String> {
+        tools::handle_run_lldb_command(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]
