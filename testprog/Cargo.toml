@@ -1,0 +1,11 @@
+[package]
+name = "testprog"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+
+[profile.dev]
+opt-level = 0
+debug = 2       # full debug info
+strip = "none"
