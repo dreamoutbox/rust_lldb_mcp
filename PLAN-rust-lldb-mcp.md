@@ -1,9 +1,9 @@
 # PLAN: rust-lldb-mcp [STATUS: TODO]
 
 Rust MCP server that exposes LLDB debugging capabilities as structured MCP tools.
-Uses `rmcp` for the MCP transport layer and drives `rust-lldb` as a long-lived
-subprocess via `tokio::process`, communicating over the LLDB Machine Interface (MI)
-protocol (`--source-quietly` + `script` / MI commands).
+Uses `rmcp` for the MCP transport layer and drives `rust-lldb` CLI directly as a long-lived
+subprocess via `tokio::process`, communicating via interactive stdin/stdout with a custom
+prompt sentinel.
 
 ---
 
@@ -19,41 +19,30 @@ MCP Client (LLM host)
       │
   SessionStore  ─── HashMap<SessionId, DebugSession>
       │
-  DebugSession  ─── tokio::process::Child (rust-lldb --interpreter=mi2)
-                    stdin  ──► send MI commands
-                    stdout ──► parse MI responses
+  DebugSession  ─── tokio::process::Child (rust-lldb --no-use-colors --source-quietly)
+                    stdin  ──► send LLDB CLI commands
+                    stdout ──► read output until prompt sentinel
 ```
 
-- One `rust-lldb` child process per session, started in MI mode (`--interpreter=mi2`).
+- One `rust-lldb` child process per session, started with `--no-use-colors --source-quietly`.
+- Initialized with `settings set prompt "__LLDB_PROMPT__ "` and `settings set auto-confirm true`.
 - Sessions are identified by a UUID; state lives in `Arc<Mutex<SessionStore>>`.
 - The MCP server runs on stdio (default) or SSE (opt-in via `--transport sse`).
 - All logging goes to `stderr` via `tracing`; `stdout` is reserved for the MCP protocol.
 
 ---
 
-## LLDB MI Primer
+## LLDB CLI Command Mapping
 
-LLDB supports the GDB/MI protocol when launched as:
-
-```sh
-rust-lldb --interpreter=mi2
-```
-
-Commands are sent as lines to stdin; responses arrive on stdout in structured
-`^result`, `*async`, `=notify` records. The driver layer wraps this into an
-async request/response interface.
-
-Key MI commands used per tool group:
-
-| Group | MI commands |
-|-------|-------------|
-| Program | `-file-exec-and-symbols`, `-exec-run`, `-exec-interrupt`, `quit` |
-| Breakpoints | `-break-insert`, `-break-list`, `-break-delete`, `-break-condition` |
-| Stepping | `-exec-continue`, `-exec-next`, `-exec-step`, `-exec-finish` |
-| Print | `-var-create` / `-var-evaluate-expression`, `-stack-list-frames`, `-stack-list-locals` |
-| Eval | `-data-evaluate-expression` |
-| Threads | `-thread-info`, `-thread-select` |
-| Raw | pass-through any MI command string |
+| Group | LLDB CLI command |
+|-------|------------------|
+| Program | `target create <path>`, `process launch`, `process kill`, `quit` |
+| Breakpoints | `breakpoint set -f <file> -l <line>`, `breakpoint set -n <func>`, `breakpoint list`, `breakpoint delete <id>`, `breakpoint modify -c <cond> <id>` |
+| Stepping | `process continue`, `thread step-over`, `thread step-in`, `thread step-out`, `thread return` |
+| Print | `frame variable <name>`, `thread backtrace`, `frame info` |
+| Eval | `expr -- <expression>` |
+| Threads | `thread list`, `thread select <id>` |
+| Raw | pass-through any LLDB CLI command string |
 
 ---
 
@@ -61,17 +50,17 @@ Key MI commands used per tool group:
 
 ```
 src/
-  main.rs           -- CLI entry, transport wiring, server startup
-  error.rs          -- thiserror error types
+  lib.rs            -- library exports + MCP server setup
+  main.rs           -- binary CLI entry point
+  error.rs          -- thiserror domain error types
   session/
     mod.rs          -- re-exports
     store.rs        -- SessionStore, SessionId, DebugSession struct
     manager.rs      -- create/list/delete session logic
   driver/
     mod.rs          -- re-exports
-    process.rs      -- spawn rust-lldb MI child, read/write lines
-    mi.rs           -- MI command builder + response parser
-    response.rs     -- typed MI response structs
+    process.rs      -- spawn rust-lldb child, send_command, read until prompt
+    parser.rs       -- parse outputs for backtrace, variables, threads, breakpoints
   tools/
     mod.rs          -- re-exports + tool registration
     session.rs      -- session_create / session_list / session_delete
@@ -99,19 +88,19 @@ src/
 
 ---
 
-### Phase 2: MI Driver [STATUS: TODO]
+### Phase 2: LLDB CLI Driver [STATUS: TODO]
 
-- **Goal**: Reliable async read/write layer over a `rust-lldb` MI child process.
+- **Goal**: Reliable async read/write layer over a `rust-lldb` CLI child process.
 - **Tasks**:
   - [ ] `src/driver/process.rs`:
-    - `LldbProcess`: wraps `tokio::process::Child`; exposes `send_command(&str) -> Result<MiResponse>`
-    - Spawn: `Command::new("rust-lldb").arg("--interpreter=mi2").stdin(Piped).stdout(Piped).stderr(Piped)`
-    - Write command line to child stdin; read stdout lines until a result record (`^done`, `^error`, `^exit`) is seen; collect async/notify records emitted before it
-    - Token-based multiplexing: prefix each command with an incrementing integer token (MI spec); match responses by token
-  - [ ] `src/driver/mi.rs`: MI command builder — formats command strings with proper quoting/escaping
-  - [ ] `src/driver/response.rs`: parse MI output records into typed structs using `serde_json` (MI record values map to JSON-compatible key=value pairs after normalization)
-  - [ ] Unit tests: spawn a real `rust-lldb --interpreter=mi2`, send `-gdb-version`, assert a `^done` record arrives
-- **Done when**: driver can send a command and receive a structured response; tests pass.
+    - `LldbProcess`: wraps `tokio::process::Child`, `BufReader<ChildStdout>`, `ChildStdin`
+    - Spawn: `Command::new("rust-lldb").args(["--no-use-colors", "--source-quietly"]).stdin(Piped).stdout(Piped).stderr(Piped)`
+    - Initialize: send `settings set prompt "__LLDB_PROMPT__ "` and `settings set auto-confirm true`
+    - `send_command(&mut self, cmd: &str) -> Result<String, LldbMcpError>`: writes command line, reads output until `__LLDB_PROMPT__ ` sentinel
+    - Timeout protection: abort after configurable duration if child stalls
+  - [ ] `src/driver/parser.rs`: helper functions for common LLDB output parsing
+  - [ ] Unit tests: spawn `rust-lldb`, send `version`, verify version output captured cleanly
+- **Done when**: driver can launch `rust-lldb`, send commands, receive cleaned output text; tests pass.
 
 ---
 
@@ -119,8 +108,8 @@ src/
 
 - **Goal**: LLM can create, list, and delete LLDB debug sessions.
 - **Tasks**:
-  - [ ] `src/session/store.rs`: define `SessionId` (newtype over `Uuid`), `DebugSession` (holds `LldbProcess`, session name, creation timestamp), `SessionStore` (`HashMap<SessionId, DebugSession>` behind `Arc<Mutex<...>>`)
-  - [ ] `src/session/manager.rs`: `create_session` (spawns MI child), `list_sessions`, `delete_session` (sends `quit` to child, awaits exit)
+  - [ ] `src/session/store.rs`: define `SessionId` (newtype over `Uuid`), `DebugSession` (holds `LldbProcess`, session name, creation timestamp, loaded target), `SessionStore` (`HashMap<SessionId, DebugSession>` behind `Arc<Mutex<...>>`)
+  - [ ] `src/session/manager.rs`: `create_session` (spawns LLDB child), `list_sessions`, `delete_session` (sends `quit` to child, awaits exit)
   - [ ] `src/tools/session.rs`: expose three MCP tools:
     - `session_create(name: String) -> SessionId`
     - `session_list() -> Vec<SessionInfo>`
@@ -136,11 +125,11 @@ src/
 - **Goal**: Load an executable into a session, launch it, and kill it.
 - **Tasks**:
   - [ ] `src/tools/program.rs`:
-    - `load_program(session_id, executable_path: String, args: Vec<String>, env: Vec<String>, working_dir: Option<String>) -> ()` — sends `-file-exec-and-symbols <path>` then `-exec-arguments <args>`
-    - `run_program(session_id, stop_at_entry: bool) -> ProcessInfo` — sends `-exec-run` (with `--start` flag if `stop_at_entry`); waits for `*stopped` async record; returns pid + stop reason
-    - `kill_process(session_id) -> ()` — sends `-exec-interrupt` then `-target-detach`; or `kill` MI command
-  - [ ] Error if `run_program` called before `load_program`, or `kill_process` when no process is live (track state on `DebugSession`)
-  - [ ] Smoke test: load `/bin/true`, run, assert `^done` + process exits
+    - `load_program(session_id, executable_path: String, args: Vec<String>, env: Vec<String>, working_dir: Option<String>) -> String` — runs `target create <path>`
+    - `run_program(session_id, stop_at_entry: bool) -> ProcessInfo` — runs `process launch` (or `process launch --stop-at-entry`)
+    - `kill_process(session_id) -> ()` — runs `process kill`
+  - [ ] Error if `run_program` called before `load_program`, or `kill_process` when no process is live
+  - [ ] Integration smoke test with `testprog`: load, run, assert output
 - **Done when**: three tools work end-to-end; tests pass.
 
 ---
@@ -150,14 +139,14 @@ src/
 - **Goal**: Set, list, delete breakpoints; support conditions.
 - **Tasks**:
   - [ ] `src/tools/breakpoints.rs`:
-    - `set_breakpoint(session_id, location: BreakpointLocation) -> BreakpointId`
-      - `BreakpointLocation` enum: `File { path: String, line: u32 }` | `Function { name: String }` | `Address { addr: u64 }`
-      - Maps to: `-break-insert <file>:<line>` | `-break-insert -f <name>` | `-break-insert *0x<addr>`
-    - `list_breakpoints(session_id) -> Vec<BreakpointInfo>` — `-break-list`; parse `BreakpointTable`
-    - `delete_breakpoint(session_id, breakpoint_id: u32) -> ()` — `-break-delete <id>`
-    - `set_breakpoint_condition(session_id, breakpoint_id: u32, condition: String) -> ()` — `-break-condition <id> <expr>`
+    - `set_breakpoint(session_id, location: BreakpointLocation) -> BreakpointInfo`
+      - `BreakpointLocation` enum: `File { path: String, line: u32 }` | `Function { name: String }` | `Address { addr: String }`
+      - Maps to: `breakpoint set -f <file> -l <line>` | `breakpoint set -n <name>` | `breakpoint set -a <addr>`
+    - `list_breakpoints(session_id) -> Vec<BreakpointInfo>` — runs `breakpoint list` and parses table
+    - `delete_breakpoint(session_id, breakpoint_id: u32) -> ()` — runs `breakpoint delete <id>`
+    - `set_breakpoint_condition(session_id, breakpoint_id: u32, condition: String) -> ()` — runs `breakpoint modify -c "<condition>" <id>`
   - [ ] `BreakpointInfo`: id, location, hit count, enabled, condition
-  - [ ] Tests use a small compiled fixture binary in `tests/fixtures/`
+  - [ ] Tests use `testprog` binary
 - **Done when**: breakpoints survive a launch/stop cycle; condition respected; tests pass.
 
 ---
@@ -167,14 +156,13 @@ src/
 - **Goal**: Full stepping control after a breakpoint hit.
 - **Tasks**:
   - [ ] `src/tools/stepping.rs`:
-    - `continue_process(session_id) -> StopReason` — `-exec-continue`; await `*stopped`
-    - `step_next(session_id, thread_id: Option<u64>) -> StopReason` — `-exec-next [--thread <id>]`
-    - `step_into(session_id, thread_id: Option<u64>) -> StopReason` — `-exec-step [--thread <id>]`
-    - `step_out(session_id, thread_id: Option<u64>) -> StopReason` — `-exec-finish [--thread <id>]`
-    - `finish_frame(session_id, thread_id: Option<u64>) -> FinishResult` — `-exec-finish`; capture `return-value` from `*stopped` record if present
-  - [ ] Shared helper: `wait_for_stopped(driver, timeout_ms: u64) -> StopEvent` — polls async records until `*stopped` or timeout
-  - [ ] All stepping tools default to selected thread when `thread_id` is `None`
-- **Done when**: step through a loop in a fixture binary; assert `line` advances correctly; tests pass.
+    - `continue_process(session_id) -> StopInfo` — `process continue`
+    - `step_next(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-over`
+    - `step_into(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-in`
+    - `step_out(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-out`
+    - `finish_frame(session_id, thread_id: Option<u64>) -> FinishResult` — `thread return` / finish
+  - [ ] `StopInfo` captures stop reason, thread id, current source file and line
+- **Done when**: step through a loop in `testprog`; assert line advances correctly; tests pass.
 
 ---
 
@@ -183,17 +171,16 @@ src/
 - **Goal**: Inspect variables, frames, and filtered backtraces.
 - **Tasks**:
   - [ ] `src/tools/print.rs`:
-    - `print_variable(session_id, name: String, thread_id: Option<u64>, frame_index: Option<u32>) -> ValueInfo` — `-var-create - @ <name>` in the target frame; parse value + type
-    - `print_frame_info(session_id, thread_id: Option<u64>, frame_index: Option<u32>) -> FrameInfo` — `-stack-info-frame`; returns file, line, function, module
-    - `print_backtrace(session_id, thread_id: Option<u64>) -> Vec<FrameInfo>` — `-stack-list-frames`; pass through `src/backtrace.rs` filter
+    - `print_variable(session_id, name: String, thread_id: Option<u64>, frame_index: Option<u32>) -> VariableInfo` — runs `frame variable <name>`
+    - `print_frame_info(session_id, thread_id: Option<u64>, frame_index: Option<u32>) -> FrameInfo` — runs `frame info`
+    - `print_backtrace(session_id, thread_id: Option<u64>) -> Vec<FrameInfo>` — runs `thread backtrace`
   - [ ] `src/backtrace.rs`: user-code frame filter
-    - Input: `Vec<FrameInfo>` from `-stack-list-frames`
-    - Drop frames where the `file` path contains any of:
+    - Drop frames where file path contains:
       - `.rustup/toolchains`, `/rustc/` (stdlib)
       - Configurable denylist (default: `tokio`, `tokio_util`, `hyper`, `tower`, `futures`, `async_std`, `smol`, `mio`, `tracing`)
     - Failsafe: if all frames are filtered, return the full list
-  - [ ] `ValueInfo`: name, type, value string
-- **Done when**: `print_backtrace` on a tokio program returns only user frames; tests pass.
+  - [ ] `VariableInfo`: name, type, value string
+- **Done when**: `print_backtrace` on `testprog` returns only user frames; tests pass.
 
 ---
 
@@ -203,24 +190,24 @@ src/
 - **Tasks**:
   - [ ] `src/tools/eval.rs`:
     - `evaluate_expression(session_id, expression: String, thread_id: Option<u64>, frame_index: Option<u32>) -> EvalResult`
-    - Sends `-data-evaluate-expression "<expr>"` (with optional `--thread`/`--frame` flags)
-    - Parses `value` field from `^done`; surfaces `msg` from `^error`
+    - Runs `expr -- <expression>`
+    - Captures output value and error if evaluation fails
   - [ ] `EvalResult`: `{ value: String, error: Option<String> }`
-  - [ ] Unit test: stop at breakpoint, evaluate an arithmetic expression and a local variable
-- **Done when**: errors surfaced as `EvalResult.error`, not panics; tests pass.
+  - [ ] Unit test: stop at breakpoint, evaluate an arithmetic expression and local variable
+- **Done when**: errors surfaced in `EvalResult`, not panics; tests pass.
 
 ---
 
 ### Phase 9: Thread Tools + Raw Command [STATUS: TODO]
 
-- **Goal**: Thread enumeration, thread switching, and raw MI command escape hatch.
+- **Goal**: Thread enumeration, thread switching, and raw LLDB command escape hatch.
 - **Tasks**:
   - [ ] `src/tools/threads.rs`:
-    - `list_threads(session_id) -> Vec<ThreadInfo>` — `-thread-info`; include id, name, state, frame count
-    - `switch_thread(session_id, thread_id: u64) -> ()` — `-thread-select <id>`
-    - `run_lldb_command(session_id, command: String) -> CommandOutput` — send the raw string as-is to the MI child stdin; collect all output lines until next result record; return as unstructured text
-  - [ ] `run_lldb_command` output is intentionally raw/unstructured; document this in tool description
-- **Done when**: `list_threads` returns at least main thread; `run_lldb_command("version")` returns LLDB version; tests pass.
+    - `list_threads(session_id) -> Vec<ThreadInfo>` — runs `thread list`
+    - `switch_thread(session_id, thread_id: u64) -> ()` — runs `thread select <id>`
+    - `run_lldb_command(session_id, command: String) -> String` — sends raw command string as-is to child stdin, captures raw output
+  - [ ] `run_lldb_command` output is unstructured text
+- **Done when**: `list_threads` returns threads from `testprog`; `run_lldb_command("version")` returns LLDB version; tests pass.
 
 ---
 
@@ -229,7 +216,7 @@ src/
 - **Goal**: End-to-end smoke test, README, clippy clean.
 - **Tasks**:
   - [ ] `tests/integration_test.rs`: spawn the MCP server binary over stdio, send JSON-RPC `tools/list`, assert all tools present; run mini session (create -> load -> run -> breakpoint -> backtrace -> delete)
-  - [ ] `README.md`: prerequisites (`rust-lldb` on PATH), build + run instructions, example MCP client config (Claude Desktop / agy), list of all tools
+  - [ ] `README.md`: prerequisites (`rust-lldb` on PATH), build + run instructions, example MCP client config, list of all tools
   - [ ] Consistent error propagation: non-existent `session_id` -> structured MCP error, not panic
   - [ ] Audit `unwrap`/`expect` outside tests; replace with `?` or add justification comments
   - [ ] `cargo clippy -- -D warnings` clean
@@ -242,9 +229,7 @@ src/
 
 | # | Item | Risk | Mitigation |
 |---|------|------|-----------|
-| 1 | MI protocol completeness | LLDB's MI support is incomplete vs GDB; some commands differ or are missing | Test each MI command against local `rust-lldb` early; use `run_lldb_command` as fallback |
-| 2 | MI response parsing | MI output format is line-oriented but not JSON; requires a custom parser | Implement a simple recursive-descent parser in `driver/response.rs`; add fuzz tests |
-| 3 | Async record interleaving | `*stopped`, `=library-loaded` etc. arrive between command result records | Buffer all records per token; fan out async records to a separate channel for caller inspection |
-| 4 | Backtrace filter completeness | User's codebase may use crates not in the default denylist | Expose `--deny-modules <pattern,...>` CLI flag; document how to extend |
-| 5 | `wait_for_stopped` timeout | Long-running programs may not stop within the default timeout | Make timeout configurable per-call; surface a `TimedOut` error rather than blocking forever |
-| 6 | rmcp API surface | Macro API may differ from web search examples | Read `rmcp` source/docs before Phase 1; adjust accordingly |
+| 1 | Prompt detection | Long command outputs or prompts embedded in text | Unique custom prompt sentinel `__LLDB_PROMPT__ `; verify delimiter handling |
+| 2 | Backtrace filter completeness | User's codebase may use crates not in default denylist | Expose `--deny-modules <pattern,...>` CLI flag |
+| 3 | Command timeout | Long-running process launch or evaluation may block | Async timeout with `tokio::time::timeout` |
+| 4 | Non-interactive auto-confirm | LLDB asking interactive prompts (y/n) | Initialized with `settings set auto-confirm true` |
