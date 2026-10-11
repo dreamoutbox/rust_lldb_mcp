@@ -151,17 +151,17 @@ src/
 
 ---
 
-### Phase 6: Stepping Tools [STATUS: TODO]
+### Phase 6: Stepping Tools [STATUS: DONE]
 
 - **Goal**: Full stepping control after a breakpoint hit.
 - **Tasks**:
-  - [ ] `src/tools/stepping.rs`:
+  - [x] `src/tools/stepping.rs`:
     - `continue_process(session_id) -> StopInfo` — `process continue`
     - `step_next(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-over`
     - `step_into(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-in`
     - `step_out(session_id, thread_id: Option<u64>) -> StopInfo` — `thread step-out`
     - `finish_frame(session_id, thread_id: Option<u64>) -> FinishResult` — `thread return` / finish
-  - [ ] `StopInfo` captures stop reason, thread id, current source file and line
+  - [x] `StopInfo` captures stop reason, thread id, current source file and line
 - **Done when**: step through a loop in `testprog`; assert line advances correctly; tests pass.
 
 ---

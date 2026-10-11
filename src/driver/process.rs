@@ -26,6 +26,10 @@ impl LldbProcess {
                 "--source-quietly",
                 "-O",
                 "settings set auto-confirm true",
+                "-O",
+                "settings set target.disable-stdio true",
+                "-O",
+                "script lldb.debugger.SetAsync(False)",
             ])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -42,11 +46,17 @@ impl LldbProcess {
             .take()
             .ok_or_else(|| LldbMcpError::Lldb("Failed to open child stdout".to_string()))?;
 
-        Ok(Self {
+        let mut proc = Self {
             child,
             stdin,
             stdout,
-        })
+        };
+
+        // LLDB interactive loop defaults to async mode (True). Force synchronous mode
+        // so that process launch, continue, and step commands block until stop events occur.
+        proc.send_command("script lldb.debugger.SetAsync(False)").await?;
+
+        Ok(proc)
     }
 
     /// Sends a command to LLDB and reads the response until the DONE sentinel.

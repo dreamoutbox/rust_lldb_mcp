@@ -32,7 +32,10 @@ impl LldbMcpServer {
 
 #[tool_router(server_handler)]
 impl LldbMcpServer {
-    #[tool(name = "session_create", description = "Create a new LLDB debug session")]
+    #[tool(
+        name = "session_create",
+        description = "Create a new LLDB debug session"
+    )]
     pub async fn session_create(
         &self,
         params: Parameters<SessionCreateParams>,
@@ -43,7 +46,10 @@ impl LldbMcpServer {
             .map_err(|e| e.to_string())
     }
 
-    #[tool(name = "session_list", description = "List all active LLDB debug sessions")]
+    #[tool(
+        name = "session_list",
+        description = "List all active LLDB debug sessions"
+    )]
     pub async fn session_list(&self) -> Result<Json<Vec<SessionInfo>>, String> {
         let list = handle_session_list(&self.store).await;
         Ok(Json(list))
@@ -153,6 +159,73 @@ impl LldbMcpServer {
     ) -> Result<String, String> {
         tools::handle_set_breakpoint_condition(&self.store, params.0)
             .await
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "continue_process",
+        description = "Resume execution of the target process in the LLDB session"
+    )]
+    pub async fn continue_process(
+        &self,
+        params: Parameters<tools::ContinueParams>,
+    ) -> Result<Json<tools::StopInfo>, String> {
+        tools::handle_continue(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(name = "step_next", description = "Step over the current source line")]
+    pub async fn step_next(
+        &self,
+        params: Parameters<tools::StepParams>,
+    ) -> Result<Json<tools::StopInfo>, String> {
+        tools::handle_step_next(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "step_into",
+        description = "Step into the function call on the current source line"
+    )]
+    pub async fn step_into(
+        &self,
+        params: Parameters<tools::StepParams>,
+    ) -> Result<Json<tools::StopInfo>, String> {
+        tools::handle_step_into(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "step_out",
+        description = "Step out of the current function to its caller"
+    )]
+    pub async fn step_out(
+        &self,
+        params: Parameters<tools::StepParams>,
+    ) -> Result<Json<tools::StopInfo>, String> {
+        tools::handle_step_out(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "finish_frame",
+        description = "Execute until the current stack frame returns"
+    )]
+    pub async fn finish_frame(
+        &self,
+        params: Parameters<tools::StepParams>,
+    ) -> Result<Json<tools::StopInfo>, String> {
+        tools::handle_finish_frame(&self.store, params.0)
+            .await
+            .map(Json)
             .map_err(|e| e.to_string())
     }
 }

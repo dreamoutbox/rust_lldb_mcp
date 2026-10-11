@@ -116,6 +116,59 @@ pub fn parse_breakpoint_list(output: &str) -> Vec<ParsedBreakpoint> {
     breakpoints
 }
 
+/// Information parsed from a process stop event.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ParsedStopInfo {
+    pub stop_reason: Option<String>,
+    pub thread_id: Option<u64>,
+    pub frame: Option<String>,
+    pub file: Option<String>,
+    pub line: Option<u32>,
+}
+
+/// Parses stop reason, thread ID, frame, file, and line from LLDB stop output.
+pub fn parse_stop_info(output: &str) -> ParsedStopInfo {
+    let mut info = ParsedStopInfo::default();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+
+        // Extract stop reason
+        if let Some(idx) = trimmed.find("stop reason = ") {
+            let reason = trimmed[idx + "stop reason = ".len()..].trim();
+            info.stop_reason = Some(reason.to_string());
+        }
+
+        // Extract thread ID (e.g. "* thread #1" or "thread #2")
+        if let Some(idx) = trimmed.find("thread #") {
+            let rest = &trimmed[idx + "thread #".len()..];
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            if let Ok(tid) = digits.parse::<u64>() {
+                info.thread_id = Some(tid);
+            }
+        }
+
+        // Extract frame #0 information
+        if trimmed.starts_with("frame #0:") {
+            info.frame = Some(trimmed.to_string());
+            if let Some(at_idx) = trimmed.rfind(" at ") {
+                let loc = &trimmed[at_idx + " at ".len()..];
+                let mut parts = loc.split(':');
+                if let Some(f) = parts.next() {
+                    info.file = Some(f.to_string());
+                }
+                if let Some(l_str) = parts.next()
+                    && let Ok(l) = l_str.parse::<u32>()
+                {
+                    info.line = Some(l);
+                }
+            }
+        }
+    }
+
+    info
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +206,15 @@ mod tests {
         assert_eq!(parsed[0].id, 1);
         assert_eq!(parsed[0].condition, Some("a == 6".to_string()));
         assert_eq!(parsed[0].hit_count, 2);
+    }
+
+    #[test]
+    fn test_parse_stop_info() {
+        let output = "Process 53944 stopped\n* thread #1, name = 'testprog', stop reason = breakpoint 1.1\n    frame #0: 0x000055555557270c testprog`testprog::add(a=6, b=7) at main.rs:19:5\n-> 19      a + b\n";
+        let parsed = parse_stop_info(output);
+        assert_eq!(parsed.stop_reason, Some("breakpoint 1.1".to_string()));
+        assert_eq!(parsed.thread_id, Some(1));
+        assert_eq!(parsed.file, Some("main.rs".to_string()));
+        assert_eq!(parsed.line, Some(19));
     }
 }
