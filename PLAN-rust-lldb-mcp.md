@@ -120,16 +120,16 @@ src/
 
 ---
 
-### Phase 4: Program Tools [STATUS: TODO]
+### Phase 4: Program Tools [STATUS: DONE]
 
 - **Goal**: Load an executable into a session, launch it, and kill it.
 - **Tasks**:
-  - [ ] `src/tools/program.rs`:
+  - [x] `src/tools/program.rs`:
     - `load_program(session_id, executable_path: String, args: Vec<String>, env: Vec<String>, working_dir: Option<String>) -> String` — runs `target create <path>`
     - `run_program(session_id, stop_at_entry: bool) -> ProcessInfo` — runs `process launch` (or `process launch --stop-at-entry`)
     - `kill_process(session_id) -> ()` — runs `process kill`
-  - [ ] Error if `run_program` called before `load_program`, or `kill_process` when no process is live
-  - [ ] Integration smoke test with `testprog`: load, run, assert output
+  - [x] Error if `run_program` called before `load_program`, or `kill_process` when no process is live
+  - [x] Integration smoke test with `testprog`: load, run, assert output
 - **Done when**: three tools work end-to-end; tests pass.
 
 ---

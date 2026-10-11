@@ -61,6 +61,46 @@ impl LldbMcpServer {
             .await
             .map_err(|e| e.to_string())
     }
+
+    #[tool(
+        name = "load_program",
+        description = "Load a target executable into an LLDB debug session"
+    )]
+    pub async fn load_program(
+        &self,
+        params: Parameters<tools::LoadProgramParams>,
+    ) -> Result<String, String> {
+        tools::handle_load_program(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "run_program",
+        description = "Launch the target program in the LLDB session"
+    )]
+    pub async fn run_program(
+        &self,
+        params: Parameters<tools::RunProgramParams>,
+    ) -> Result<Json<tools::ProcessInfo>, String> {
+        tools::handle_run_program(&self.store, params.0)
+            .await
+            .map(Json)
+            .map_err(|e| e.to_string())
+    }
+
+    #[tool(
+        name = "kill_process",
+        description = "Terminate the running target process in the LLDB session"
+    )]
+    pub async fn kill_process(
+        &self,
+        params: Parameters<tools::KillProcessParams>,
+    ) -> Result<String, String> {
+        tools::handle_kill_process(&self.store, params.0)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]

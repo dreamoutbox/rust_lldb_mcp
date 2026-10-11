@@ -1,4 +1,7 @@
-use std::{process::Stdio, time::Duration};
+use std::{
+    process::Stdio,
+    time::Duration,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     process::{Child, ChildStdin, ChildStdout, Command},
@@ -7,7 +10,7 @@ use tokio::{
 
 use crate::error::LldbMcpError;
 
-pub const DONE_SENTINEL: &str = "__LLDB_DONE__";
+pub const DONE_SENTINEL: &str = "___LLDB_DONE___";
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Controls an interactive rust-lldb subprocess over stdin and stdout.
@@ -61,7 +64,9 @@ impl LldbProcess {
         duration: Duration,
     ) -> Result<String, LldbMcpError> {
         // We write the command, followed by a script that outputs our unique delimiter.
-        let payload = format!("{cmd}\nscript print(\"{DONE_SENTINEL}\")\n");
+        // We construct the script via string concatenation in python so the literal
+        // DONE_SENTINEL is not present in the command echo.
+        let payload = format!("{cmd}\nscript print(\"___LLDB_\" + \"DONE___\")\n");
         self.stdin
             .write_all(payload.as_bytes())
             .await
@@ -72,13 +77,11 @@ impl LldbProcess {
         Ok(clean_output(&raw_output, cmd))
     }
 
-    /// Reads stdout chunks until DONE_SENTINEL is observed.
+    /// Reads stdout chunks until a standalone DONE_SENTINEL line is observed.
     async fn read_until_sentinel(&mut self, duration: Duration) -> Result<String, LldbMcpError> {
         let read_future = async {
             let mut accumulator: Vec<u8> = Vec::with_capacity(4096);
             let mut buffer = [0u8; 1024];
-
-            let sentinel_bytes = DONE_SENTINEL.as_bytes();
 
             loop {
                 let bytes_read = self.stdout.read(&mut buffer).await?;
@@ -88,11 +91,9 @@ impl LldbProcess {
                 }
                 accumulator.extend_from_slice(&buffer[..bytes_read]);
 
-                // Check if the accumulated bytes contain the sentinel
-                if accumulator
-                    .windows(sentinel_bytes.len())
-                    .any(|window| window == sentinel_bytes)
-                {
+                // Check if any completed line matches the sentinel
+                let text = String::from_utf8_lossy(&accumulator);
+                if text.lines().any(|l| l.trim() == DONE_SENTINEL) {
                     break;
                 }
             }
@@ -129,8 +130,8 @@ fn clean_output(raw: &str, executed_cmd: &str) -> String {
 
         // Skip prompt echoes, command echo, and the delimiter marker
         if trimmed == DONE_SENTINEL
-            || trimmed == format!("script print(\"{DONE_SENTINEL}\")")
-            || trimmed == format!("(lldb) script print(\"{DONE_SENTINEL}\")")
+            || trimmed == "script print(\"___LLDB_\" + \"DONE___\")"
+            || trimmed == "(lldb) script print(\"___LLDB_\" + \"DONE___\")"
             || trimmed == executed_cmd
             || trimmed == format!("(lldb) {executed_cmd}")
         {
@@ -157,7 +158,7 @@ mod tests {
     #[test]
     fn test_clean_output() {
         let raw = format!(
-            "(lldb) version\nlldb version 19.1.1\n(lldb) script print(\"{DONE_SENTINEL}\")\n{DONE_SENTINEL}\n"
+            "(lldb) version\nlldb version 19.1.1\n(lldb) script print(\"___LLDB_\" + \"DONE___\")\n{DONE_SENTINEL}\n"
         );
         let cleaned = clean_output(&raw, "version");
         assert_eq!(cleaned, "lldb version 19.1.1");

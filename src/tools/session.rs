@@ -1,10 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::{
     error::LldbMcpError,
-    session::{SessionId, SessionInfo, SessionStore, create_session, delete_session, list_sessions},
+    session::{SessionInfo, SessionStore, create_session, delete_session, list_sessions},
 };
 
 /// Parameters for creating a debug session.
@@ -45,9 +44,7 @@ pub async fn handle_session_delete(
     store: &SessionStore,
     params: SessionDeleteParams,
 ) -> Result<String, LldbMcpError> {
-    let uuid = Uuid::parse_str(&params.session_id)
-        .map_err(|_| LldbMcpError::InvalidArgument(format!("Invalid UUID: {}", params.session_id)))?;
-    let session_id = SessionId(uuid);
+    let session_id = crate::session::parse_session_id(&params.session_id)?;
     delete_session(store, &session_id).await?;
     Ok(format!("Session {} deleted successfully", params.session_id))
 }

@@ -73,3 +73,10 @@ impl SessionStore {
         self.sessions.lock().await
     }
 }
+
+/// Parses a string into a SessionId.
+pub fn parse_session_id(id_str: &str) -> Result<SessionId, crate::error::LldbMcpError> {
+    let uuid = Uuid::parse_str(id_str)
+        .map_err(|_| crate::error::LldbMcpError::InvalidArgument(format!("Invalid UUID: {id_str}")))?;
+    Ok(SessionId(uuid))
+}
