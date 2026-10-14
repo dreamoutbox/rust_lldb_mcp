@@ -5,7 +5,7 @@ resolver = "3"
 
 [package]
 name = "rust_lldb_mcp"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2024"
 
 [dependencies]
