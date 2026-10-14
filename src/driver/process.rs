@@ -9,6 +9,7 @@ use crate::error::LldbMcpError;
 
 pub const DONE_SENTINEL: &str = "___LLDB_DONE___";
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(15);
+const SCRIPT_SENTINEL_CMD: &str = "script print(\"___LLDB_\" + \"DONE___\", flush=True)";
 
 /// Controls an interactive rust-lldb subprocess over stdin and stdout.
 pub struct LldbProcess {
@@ -79,8 +80,9 @@ impl LldbProcess {
     ) -> Result<String, LldbMcpError> {
         // We write the command, followed by a script that outputs our unique delimiter.
         // We construct the script via string concatenation in python so the literal
-        // DONE_SENTINEL is not present in the command echo.
-        let payload = format!("{cmd}\nscript print(\"___LLDB_\" + \"DONE___\")\n");
+        // DONE_SENTINEL is not present in the command echo. flush=True ensures the
+        // sentinel is immediately written to stdout even when stdout is piped/block-buffered.
+        let payload = format!("{cmd}\n{SCRIPT_SENTINEL_CMD}\n");
         self.stdin
             .write_all(payload.as_bytes())
             .await
@@ -102,12 +104,15 @@ impl LldbProcess {
             let mut stderr_buf: Vec<u8> = Vec::new();
             let mut stdout_buffer = [0u8; 1024];
             let mut stderr_buffer = [0u8; 1024];
+            let mut stderr_closed = false;
 
             loop {
                 tokio::select! {
-                    res = self.stderr.read(&mut stderr_buffer) => {
+                    res = self.stderr.read(&mut stderr_buffer), if !stderr_closed => {
                         let bytes_read = res?;
-                        if bytes_read > 0 {
+                        if bytes_read == 0 {
+                            stderr_closed = true;
+                        } else {
                             stderr_buf.extend_from_slice(&stderr_buffer[..bytes_read]);
                         }
                     }
@@ -168,6 +173,8 @@ fn clean_output(raw: &str, executed_cmd: &str) -> String {
 
         // Skip prompt echoes, command echo, and the delimiter marker
         if trimmed == DONE_SENTINEL
+            || trimmed == SCRIPT_SENTINEL_CMD
+            || trimmed == format!("(lldb) {SCRIPT_SENTINEL_CMD}")
             || trimmed == "script print(\"___LLDB_\" + \"DONE___\")"
             || trimmed == "(lldb) script print(\"___LLDB_\" + \"DONE___\")"
             || trimmed == executed_cmd
@@ -196,10 +203,16 @@ mod tests {
     #[test]
     fn test_clean_output() {
         let raw = format!(
-            "(lldb) version\nlldb version 19.1.1\n(lldb) script print(\"___LLDB_\" + \"DONE___\")\n{DONE_SENTINEL}\n"
+            "(lldb) version\nlldb version 19.1.1\n(lldb) {SCRIPT_SENTINEL_CMD}\n{DONE_SENTINEL}\n"
         );
         let cleaned = clean_output(&raw, "version");
         assert_eq!(cleaned, "lldb version 19.1.1");
+
+        let legacy_raw = format!(
+            "(lldb) version\nlldb version 19.1.1\n(lldb) script print(\"___LLDB_\" + \"DONE___\")\n{DONE_SENTINEL}\n"
+        );
+        let cleaned_legacy = clean_output(&legacy_raw, "version");
+        assert_eq!(cleaned_legacy, "lldb version 19.1.1");
     }
 
     #[tokio::test]
