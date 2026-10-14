@@ -31,6 +31,28 @@ rust-lldb --version
 
 ## Installation & Building
 
+### Pre-built Binary (GitHub Releases)
+
+Install the pre-built binary using `curl`:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/dreamoutbox/rust_lldb_mcp/main/install.sh | bash
+```
+
+The script automatically detects your platform (`Linux x86_64` or `macOS Apple Silicon`) and installs the binary to `~/.local/bin/rust_lldb_mcp`.
+
+#### Custom Installation Directory or Specific Version
+
+```bash
+# Install to custom directory
+INSTALL_DIR=/usr/local/bin curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/dreamoutbox/rust_lldb_mcp/main/install.sh | bash
+
+# Install a specific release version
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/dreamoutbox/rust_lldb_mcp/main/install.sh | bash -s -- v1.0.1
+```
+
+### Building from Source
+
 Clone the repository and build the binary:
 
 ```bash
